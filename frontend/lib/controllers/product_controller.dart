@@ -54,6 +54,88 @@ class ProductController extends GetxController {
     products.add(product); // Add the new product to the products list
   }
 
+  Future<void> updateProduct(Product product) async {
+    try {
+      final response = await http.put(
+        Uri.parse('http://localhost:5000/api/products/${product.id}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await _getToken()}'
+        },
+        body: jsonEncode(product.toJson()),
+      );
+
+      if (response.statusCode == 200) {
+        final updatedProduct = Product.fromJson(json.decode(response.body));
+        final index = products.indexWhere((p) => p.id == updatedProduct.id);
+        if (index != -1) {
+          products[index] = updatedProduct;
+          products.refresh();
+        }
+      } else {
+        // Attempt to extract the error message from the response body if available
+        final errorMessage = response.body.isNotEmpty
+            ? json.decode(response.body)['message'] ?? 'Unknown error'
+            : 'Failed to update product';
+        throw Exception('Failed to update product: $errorMessage');
+      }
+    } catch (e) {
+      // Display the error message in the snackbar
+      Get.snackbar(
+        'Error',
+        'Failed to update product: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+         
+      );
+    }
+  }
+
+  // // Update product
+  // Future<void> updateProduct(Product product) async {
+  //   try {
+  //     final response = await http.put(
+  //       Uri.parse('http://localhost:5000/api/products/${product.id}'),
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': 'Bearer ${await _getToken()}'
+  //       },
+  //       body: jsonEncode(product.toJson()),
+  //     );
+
+  //     if (response.statusCode == 200) {
+  //       final updatedProduct = Product.fromJson(json.decode(response.body));
+  //       final index = products.indexWhere((p) => p.id == updatedProduct.id);
+  //       if (index != -1) {
+  //         products[index] = updatedProduct;
+  //         products.refresh();
+  //       }
+  //     } else {
+  //       throw Exception('Failed to update product');
+  //     }
+  //   } catch (e) {
+  //     Get.snackbar('Error', 'Failed to update product: ${e.toString()}');
+  //   }
+  // }
+
+  // Delete product
+  Future<void> deleteProduct(String productId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('http://localhost:5000/api/products/$productId'),
+        headers: {'Authorization': 'Bearer ${await _getToken()}'},
+      );
+
+      if (response.statusCode == 200) {
+        products.removeWhere((product) => product.id == productId);
+        products.refresh();
+      } else {
+        throw Exception('Failed to delete product');
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to delete product: ${e.toString()}');
+    }
+  }
+
   // Add product to cart
   void addToCart(Product product) {
     int index = cart.indexWhere((item) => item.product.id == product.id);

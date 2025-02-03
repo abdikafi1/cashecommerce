@@ -22,6 +22,7 @@ class MyApp extends StatelessWidget {
     Get.put(ProductController());
 
     return GetMaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter E-Commerce',
       theme: ThemeData(
         primarySwatch: Colors.blue,

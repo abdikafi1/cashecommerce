@@ -1,233 +1,76 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/pages/transaction.dart';
 import 'package:get/get.dart';
 import '../controllers/product_controller.dart';
-import '../controllers/auth_controller.dart';
 import '../models/product.dart';
-import '../pages/cart.dart';
-import '../pages/report.dart'; // Ensure this import is correct
 
-class ProductListPage extends StatelessWidget {
-  final ProductController productController = Get.find<ProductController>();
-  final Color primaryColor = const Color(0xFF125C33);
-
-  @override
-  Widget build(BuildContext context) {
-    final authController = Get.find<AuthController>();
-    final productController = Get.find<ProductController>();
-
-    // Check if the user is an admin
-    final isAdmin = authController.user.value?['role'] == 'admin';
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          isAdmin ? 'Admin Dashboard' : 'Product List',
-          style: const TextStyle(color: Colors.white),
-        ),
-        backgroundColor: primaryColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () {
-              authController.logout();
-              Get.offAllNamed('/login');
-            },
-          ),
-          if (isAdmin)
-            IconButton(
-              icon: const Icon(Icons.report, color: Colors.white),
-              onPressed: () => Get.to(
-                  () => TransactionReportPage()), // Navigate to ReportPage
-            ),
-        ],
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.green.shade100, Colors.white],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Obx(() {
-          if (productController.isLoading.value) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          // Show AdminTasks if the user is an admin, otherwise show the product list
-          return isAdmin ? AdminTasks() : _buildProductList();
-        }),
-      ),
-      floatingActionButton: isAdmin
-          ? FloatingActionButton(
-              onPressed: () => AdminTasks()._showProductInputDialog(),
-              child: const Icon(Icons.add, color: Colors.white),
-              backgroundColor: primaryColor,
-              tooltip: 'Add Product',
-            )
-          : null,
-      bottomNavigationBar: !isAdmin
-          ? BottomAppBar(
-              color: Colors.white,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (productController.cart.isNotEmpty) {
-                      Get.to(() => CartPage());
-                    } else {
-                      Get.snackbar(
-                        'Cart Empty',
-                        'Please add items to the cart to proceed.',
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: Colors.red,
-                        colorText: Colors.white,
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: Text(
-                    'View Cart (${productController.cart.length})',
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
-                  ),
-                ),
-              ),
-            )
-          : null,
-    );
-  }
-
-  // Product List for Users
-  Widget _buildProductList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: productController.products.length,
-      itemBuilder: (context, index) {
-        final product = productController.products[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          elevation: 5,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(16),
-            title: Text(
-              product.name,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(
-                  'Price: \$${product.price.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Description: ${product.description}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                product.imageUrl,
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Icon(
-                    Icons.image_not_supported,
-                    size: 60,
-                    color: Colors.grey.shade400,
-                  );
-                },
-              ),
-            ),
-            trailing: IconButton(
-              icon: Icon(Icons.add_shopping_cart, color: primaryColor),
-              onPressed: () {
-                productController.addToCart(product);
-                Get.snackbar(
-                  'Added to Cart',
-                  '${product.name} added to cart',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: Colors.green,
-                  colorText: Colors.white,
-                  duration: const Duration(seconds: 3),
-                );
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// AdminTasks Widget to handle all admin-related tasks
 class AdminTasks extends StatelessWidget {
   final ProductController productController = Get.find<ProductController>();
   final Color primaryColor = const Color(0xFF125C33);
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Summary Cards
-          Row(
-            children: [
-              _buildSummaryCard('Total Products',
-                  productController.products.length.toString()),
-              const SizedBox(width: 16),
-              _buildSummaryCard(
-                  'Total Sales', '\$0.00'), // Replace with actual sales data
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Product List
-          Text(
-            'All Products',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: primaryColor,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: productController.products.length,
-            itemBuilder: (context, index) {
-              final product = productController.products[index];
-              return _buildAdminProductCard(product);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Admin Dashboard',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: primaryColor,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.report, color: Colors.white),
+            onPressed: () {
+              // Navigate to the report page or perform other admin actions
+              Get.to(() => TransactionPage()); // Assuming ReportPage is defined
             },
           ),
         ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Summary Cards
+            Row(
+              children: [
+                _buildSummaryCard('Total Products',
+                    productController.products.length.toString()),
+                const SizedBox(width: 16),
+                _buildSummaryCard(
+                    'Total Sales', '\$0.00'), // Replace with actual sales data
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Product List
+            Text(
+              'All Products',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: productController.products.length,
+              itemBuilder: (context, index) {
+                final product = productController.products[index];
+                return _buildAdminProductCard(product);
+              },
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showProductInputDialog(),
+        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: primaryColor,
+        tooltip: 'Add Product',
       ),
     );
   }

@@ -37,93 +37,65 @@ class AuthController extends GetxController {
   }
 
   // Login method with feedback
-Future<bool> login(String email, String password) async {
+  Future<bool> login(String email, String password) async {
     try {
-      // Step 1: You give your email and password to the guard (server)
       final response = await http.post(
         Uri.parse('http://localhost:5000/api/auth/login'),
         body: jsonEncode({'email': email, 'password': password}),
         headers: {'Content-Type': 'application/json'},
       );
 
-      // Step 2: The guard checks your details with the control room (the server)
       if (response.statusCode == 200) {
-        final data = jsonDecode(
-            response.body); // The control room says "yes, you're verified!"
-
-        // Step 3: The guard notes your user ID and role (like writing them down)
+        final data = jsonDecode(response.body);
         userId.value = data['userId'] ?? '';
-        userRole.value = data['role'] ?? 'user';
+        userRole.value = data['role'] ?? 'user'; // Ensure role is set correctly
         user.value = data['user'] ?? {};
 
-        // Step 4: The guard remembers you for next time (like writing it on paper)
+        // Debug log
+        print('Login Successful - Role: ${userRole.value}');
+
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('userId', data['userId']);
         await prefs.setString('role', data['role']);
         await prefs.setString('user', jsonEncode(data['user']));
 
-        // Step 5: The guard opens the door (navigates you to the products page)
         Get.offAllNamed('/products');
-        return true; // Access granted
+        return true;
       } else {
-        // Step 6: If the guard finds a problem, they show an error message (access denied)
         final errorResponse = jsonDecode(response.body);
         String errorMessage = errorResponse['message'] ?? 'Unknown error';
-
-        // Additional error handling: Capture specific error details if available
-        String detailedError = '';
-        if (errorResponse.containsKey('error')) {
-          detailedError = errorResponse['error'];
-        } else if (errorMessage.contains('email')) {
-          detailedError =
-              'The email you entered is incorrect or not registered.';
-        } else if (errorMessage.contains('password')) {
-          detailedError = 'The password you entered is incorrect.';
-        } else {
-          detailedError = 'Something went wrong. Please try again later.';
-        }
-
-        print('Login Error: $detailedError'); // Guard talks about the issue
-
-        // Show more detailed error message to the user
-        Get.snackbar('Error', detailedError,
+        Get.snackbar('Error', 'Login failed: $errorMessage',
             snackPosition: SnackPosition.BOTTOM);
-        return false; // Access denied
+        return false;
       }
     } catch (e) {
-      // Step 7: If there's a problem (maybe the control room is unavailable), show an error
       print('Login Exception: $e');
-      String errorMessage =
-          'Connection failed: $e. Please check your internet connection or try again later.';
-      Get.snackbar('Error', errorMessage, snackPosition: SnackPosition.BOTTOM);
-      return false; // Access denied
+      Get.snackbar('Error', 'Connection failed: $e',
+          snackPosition: SnackPosition.BOTTOM);
+      return false;
     }
   }
 
-  // Auto login method
-  Future<void> autoLogin() async {
+Future<void> autoLogin() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final storedUserId = prefs.getString('userId');
       if (storedUserId != null) {
         userId.value = storedUserId;
-        userRole.value = prefs.getString('role') ?? 'user';
-
-        // Load user data if available
+        userRole.value =
+            prefs.getString('role') ?? 'user'; // Ensure this is correct
         final storedUser = prefs.getString('user');
         if (storedUser != null) {
           user.value = jsonDecode(storedUser);
         }
 
-        Get.offAllNamed('/products');
-      } else {
-        Get.offAllNamed('/login');
+        // Debug log
+        print('AutoLogin Successful - Role: ${userRole.value}');
       }
     } catch (e) {
       Get.snackbar('Error', 'Auto login failed: $e');
     }
   }
-
   // Logout method
   Future<void> logout() async {
     try {
